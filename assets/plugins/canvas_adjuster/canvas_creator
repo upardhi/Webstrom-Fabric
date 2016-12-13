@@ -1,0 +1,187 @@
+
+$(document).ready(function(){
+
+    /*var templateRenderingData=
+
+    {"parent":"[data-editor-view-id = '1120']",
+    "templateData":
+    {"applicationType":"editor",
+    "viewId":1120,
+    "variantId":1218,
+    "image":{"width":600,
+             "height":600,
+             "title":"Front",
+             "src":"img/"},
+    "canvas":{"width":476,
+              "height":524,
+              "top":21,
+              "left":61}}
+   ,"borderWidth":2,"padding":5};
+    createCanvas(templateRenderingData,1);
+
+    $(window).on("resize", changeEditorStyle);
+    $(window).on("orientationchange", changeEditorStyle);
+
+    */
+})
+
+/*for creating canvas component
+ @ data (req) : canvas data for drawing editor
+ @canvastype (req): for static or dynamic canvas*/
+function createCanvas(data, canvasType) {
+    debugger;
+    var fabricObject = null;
+    var domData = this.renderDom(data);
+    this.dynamicCanvas = canvasType;
+    if (this.dynamicCanvas) {
+        fabricObject = this.createDynamicCanvas(domData);
+    }
+    else {
+        fabricObject = this.createStaticCanvas(domData);
+    }
+
+
+    return { fabricObject: fabricObject, domData: domData };
+}
+
+/*for creating canvas component
+ @ data (req) : data for drawing dom
+ */
+function renderDom(data) {
+
+    var parentContainer = data.parent
+    var templateData = data.templateData;
+    var borderWidth = data.borderWidth;
+    var padding = data.padding;
+    var viewsScaleFactor = 1;
+    if (typeof templateData.hasCanvasImageSrc == 'undefined' || templateData.hasCanvasImageSrc == null) {
+        templateData.hasCanvasImageSrc = false;
+    }
+    /*rendering template*/
+    // $(parentContainer).html($("#create-canvas-tmpl").tmpl(templateData));
+
+    /*prepaire selectors*/
+    var mainContainer = $(parentContainer);
+    var viewsImgList = '[data-view-id="' + templateData.viewId + '"][data-application-type="' + templateData.applicationType + '"]';
+    var viewsContainer = $(viewsImgList);
+    var image = $(viewsImgList + ' [data-component-type="product-image"]');
+    var canvasContainer = $(viewsImgList + ' [data-component-type="canvas-container"]');
+    var canvas = $(viewsImgList + ' [data-component-type="canvas"]');
+    var canvasImageContainer = $(viewsImgList + ' [data-component-type="canvas-image"]');
+    /*taking existing data from selectors*/
+    var imageWidth = image.width();
+    var imageHeight = image.height();
+    var canvasHeight = canvas.height();
+    var canvasWidth = canvas.width();
+    var containerHeight = mainContainer.height();
+    var containerWidth = mainContainer.width();
+    /*taking canvas id and other information for creating fabric object*/
+    var viewId = templateData.viewId;
+    var variantId = templateData.variantId;
+    var canvasId = canvas.attr('id');
+
+    /*calculated scale factor */
+    var viewsInformation = { canvas: { width: canvasWidth, height: canvasHeight }, image: { width: imageWidth, height: imageHeight }, container: { width: containerWidth, height: containerHeight }, padding: padding };
+    viewsScaleFactor = this.calculateScalingFactor(viewsInformation);
+
+    /*applied scale factor on view images and canvases */
+    viewsContainer.css('width', imageWidth * viewsScaleFactor);
+    viewsContainer.css('height', imageHeight * viewsScaleFactor);
+    image.attr('width', imageWidth * viewsScaleFactor);
+    image.attr('height', imageHeight * viewsScaleFactor);
+    canvasContainer.css('width', (canvasWidth * viewsScaleFactor) - borderWidth);
+    canvasContainer.css('height', (canvasHeight * viewsScaleFactor) - borderWidth);
+    canvasImageContainer.css('width', (canvasWidth * viewsScaleFactor) - borderWidth);
+    canvasImageContainer.css('height', (canvasHeight * viewsScaleFactor) - borderWidth);
+    var canvasContainerTop = parseFloat(canvasContainer.css('top')) * viewsScaleFactor;
+    var canvasContainerLeft = parseFloat(canvasContainer.css('left')) * viewsScaleFactor;
+    canvasContainer.css('top', canvasContainerTop);
+    canvasContainer.css('left', canvasContainerLeft);
+
+    var domData = {
+        canvasId: canvasId,
+        viewId: parseFloat(viewId),
+        variantId: parseFloat(variantId),
+        canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight,
+        scaleFactor: viewsScaleFactor
+    };
+    changeEditorStyle();
+    return domData;
+}
+/*for creating dynamic fabric canvas component
+ @ domData (req) : data for drawing dom
+ */
+function createDynamicCanvas(domData) {
+    var domData = domData;
+    //var fabricObject = {};
+    fabricObject = new fabric.Canvas(domData.canvasId.toString());
+    fabricObject.viewId = domData.viewId;
+    fabricObject.setHeight(fabricObject.getHeight() * domData.scaleFactor);
+    fabricObject.setWidth(fabricObject.getWidth() * domData.scaleFactor);
+    fabricObject.renderAll();
+    return fabricObject;
+}
+/*for creating static fabric canvas component
+ @ data (req) : data for drawing dom
+ */
+function createStaticCanvas(domData) {
+    var domData = domData;
+    var fabricObject = {};
+    fabricObject = new fabric.StaticCanvas(domData.canvasId.toString());
+    fabricObject.viewId = domData.viewId;
+    fabricObject.setHeight(fabricObject.getHeight() * domData.scaleFactor);
+    fabricObject.setWidth(fabricObject.getWidth() * domData.scaleFactor);
+    fabricObject.renderAll();
+    return fabricObject;
+
+}
+/*for creating canvas component
+ @ data (req) : data for drawing dom
+ */
+function calculateScalingFactor (_viewsInformation) {
+
+    var viewsScaleFactor = 1;
+    var sw = (_viewsInformation.container.width - _viewsInformation.padding) / _viewsInformation.image.width;
+    var sh = (_viewsInformation.container.height - _viewsInformation.padding) / _viewsInformation.image.height;
+
+    if (sw <= sh) {
+        viewsScaleFactor = sw;
+    } else {
+        viewsScaleFactor = sh;
+    }
+    return viewsScaleFactor;
+}
+
+function    setEditorStyle (viewId) {
+    var scaleFactor = calculateScaleFactor(viewId);
+    var viewContainer = $('[data-editor-view-id="' + viewId + '"]');
+    viewContainer.css('transform', 'scale(' + scaleFactor + ',' + scaleFactor + ')');
+    viewContainer.css('-webkit-transform', 'scale(' + scaleFactor + ',' + scaleFactor + ')');
+    viewContainer.css('-moz-transform', 'scale(' + scaleFactor + ',' + scaleFactor + ')');
+    viewContainer.css('-ms-transform', 'scale(' + scaleFactor + ',' + scaleFactor + ')');
+    viewContainer.css('-o-transform', 'scale(' + scaleFactor + ',' + scaleFactor + ')');
+
+    /*Calculating left position for product image's view*/
+    var left = ($('[data-art-container="editor-container"]').width() - viewContainer.width() * scaleFactor) / 2;
+    viewContainer.css('left', left);
+}
+
+/* calculateScaleFactor function calculates tranform/scaling factor and left alignment to product's image
+ @param viewId {string} unique-id of the active product image's view
+ */
+function calculateScaleFactor (viewId) {
+    $('[data-art-container="product-image-container"]').css("transform-origin", "0% 0%");
+    var viewContainer = $('[data-editor-view-id="' + viewId + '"]');
+    var cssWidthScale = $('[data-art-container="image-area"]').width() / viewContainer.width();
+    var cssHeightScale = $('[data-art-container="image-area"]').height() / viewContainer.height();
+    var scaleFactor = Math.min(cssWidthScale, cssHeightScale);
+    return scaleFactor;
+}
+
+/*
+ Triggered on window's resize,orientation change; Gets active product image view's id and passes same to setEditorStyle function
+ */
+function changeEditorStyle () {
+    setEditorStyle(viewId);
+}
